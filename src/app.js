@@ -6,7 +6,7 @@ const { utils: { parseKey }, Server } = require('ssh2');
 
 const allowedUser = Buffer.from('staco');
 const allowedPassword = Buffer.from('welcome1');
-const allowedPubKey = parseKey(readFileSync('/Users/staco/.ssh/id_rsa.pub'));
+const allowedPubKey = parseKey(readFileSync('id_rsa.pub'));
 
 function checkValue(input, allowed) {
   const autoReject = (input.length !== allowed.length);
@@ -20,7 +20,7 @@ function checkValue(input, allowed) {
 }
 
 new Server({
-  hostKeys: [{key:readFileSync('/Users/staco/.ssh/id_rsa'), passphrase:'welcome1'}]
+  hostKeys: [{key:readFileSync('id_rsa'), passphrase:'welcome1'}]
 }, (client) => {
   console.log('Client connected!');
 
@@ -67,6 +67,6 @@ new Server({
   }).on('close', () => {
     console.log('Client disconnected');
   });
-}).listen(0, '127.0.0.1', function() {
+}).listen(8070, '127.0.0.1', function() {
   console.log('Listening on port ' + this.address().port);
 });
