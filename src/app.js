@@ -65,8 +65,8 @@ new Server({
       });
     });
   }).on('close', () => {
-    console.log('Client disconnected');
+    console.log('Client disconnected test');
   });
-}).listen(8070, '127.0.0.1', function() {
+}).listen(8070, function() {
   console.log('Listening on port ' + this.address().port);
 });
