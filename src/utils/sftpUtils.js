@@ -15,30 +15,18 @@ const checkValue = (input, allowed) => {
     }
     const isMatch = timingSafeEqual(input, allowed);
     return (!autoReject && isMatch);
-  }
-
-const checkAuthnticationMethod = (authenticationMethod, password, allowedPassword) => {
-switch (authenticationMethod) {
-    case 'password':
-    if (!checkValue(Buffer.from(password), allowedPassword))
-        return false;
-        break;
-    default:
-    return false;
-}
-
-return true;
 }
 
 const  normalizePath = (path) => {
-    const start = path;
     if (path.startsWith('/')) {
         path = path.substring(1);
     }
     if (path.endsWith('.')) {
         path = path.substring(0, path.length - 1);
     }
+
     path = PATH.normalize(path);
+
     if (path === '.') {
         path = '';
     }
@@ -49,33 +37,45 @@ const  normalizePath = (path) => {
 }
 
 const getStatData = async (path) =>  {
-    if (path === "/") { // The root is a directory ... simple base/special case.
-        const attrs = {
+    let attrs = null;
+    let dirPath = path + "/";
+
+    if (dirPath === "/") { // The root is a directory ... simple base/special case.
+        attrs = {
             "mode": MODE_DIR
         };
         return attrs;
     }
-    path = normalizePath(path);
+    dirPath = normalizePath(dirPath);
     try {
-        const directoryList = await getDirectoryList(path);
-        if (directoryList.CommonPrefixes.length != 0) {
-            let existFolder = false;
+        const directoryList = await getDirectoryList(dirPath);
+        let existFolder = false;
 
+        if (directoryList.Contents.length != 0) {
+            if(directoryList?.Contents[0].Key === dirPath) {
+                existFolder = true;
+            }
+        }
+
+        if (!existFolder && directoryList.CommonPrefixes.length != 0) {
             for(const directory of directoryList?.CommonPrefixes) {
                 const folderNames = directory?.Prefix?.split('/');
                 const lastFolderName = folderNames[folderNames?.length - 2];
-                if(lastFolderName == path) {
+                if(lastFolderName == dirPath) {
+               
                     existFolder = true;
                     break;
                 }
             }
-            if(!existFolder) {
-                console.log(`Could not find ${path}`);
-                return null;
-            }
         }
-        console.log(`"${path}" is a directory!`)
-        const attrs = {
+
+        if(!existFolder) {
+            console.log(`Could not find ${dirPath}`);
+            return null;
+        }
+
+        console.log(`"${dirPath}" is a directory!`)
+         attrs = {
             "mode": MODE_DIR
         };
         return attrs;
@@ -85,19 +85,15 @@ const getStatData = async (path) =>  {
         return null;
     }
     return null;
-} // getStatData
+}
 
 const setFileNames = (directoryList, dirPath) => {
     const fileNames = [];
     const newDirPath = dirPath != '/' ? `${dirPath}` : '';
 
-    console.log('newDirPath', newDirPath);
-
     directoryList?.Contents?.forEach(file => {
       const name = file.Key.trim();
-      console.log('Name', name);
-      const newName = name.replace(`TestFolder/${newDirPath}`, '');
-      console.log('newName', newName);
+      const newName = name.replace(`${newDirPath}`, '');
 
       if (newName) {
         const directory = new Directory(newName, newName, MODE_FILE, file.Size);
@@ -114,7 +110,7 @@ const setFileNames = (directoryList, dirPath) => {
 
     directoryList?.CommonPrefixes?.forEach(folder => {
         const name = folder.Prefix;
-        const newName = name.replace(`TestFolder/${newDirPath}`,'');
+        const newName = name.replace(`${newDirPath}`,'');
 
         if(newName) {
           const folderName = newName.replace('/', '');
@@ -126,4 +122,4 @@ const setFileNames = (directoryList, dirPath) => {
     return folderNames;
   }
 
-  module.exports = { checkValue, checkAuthnticationMethod, normalizePath, setFileNames, setFolderNames, getStatData };
+  module.exports = { checkValue, normalizePath, setFileNames, setFolderNames, getStatData };
