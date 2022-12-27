@@ -1,14 +1,18 @@
 const { readFileSync } = require('fs');
 const { uploadFile, getDirectoryList } = require('./controllers/s3Controller');
-const { checkValue, checkAuthnticationMethod } = require('./utils/sftpUtils');
+const { checkValue, checkAuthnticationMethod, normalizePath, setFileNames, setFolderNames, getStatData } = require('./utils/sftpUtils');
+const fs = require('fs');
 const Directory = require('./models/directoryModel');
 const path = require('path');
 const ssh2 = require('ssh2');
+const PATH = require('path');
+
 
 const {utils: {sftp: {OPEN_MODE, STATUS_CODE}}} = ssh2;
 const allowedUser = Buffer.from('foo');
 const allowedPassword = Buffer.from('bar');
 const bucketName = 'santytest';
+
 let fileName = '';
 let readDirPath = '/';
 
@@ -35,45 +39,145 @@ new ssh2.Server({
         let handleCount = 0;
         const sftp = accept();
 
+        function getFileRecord(handleBuffer) {
+          if (handleBuffer.length !== 4) {
+              console.log("ERROR: Buffer wrong size for 32bit BE integer");
+              return null;
+          }
+
+          const handle = handleBuffer.readUInt32BE(0); // Get the handle of the file from the SFTP client.
+
+          if (!openFiles.has(handle)) {
+            console.log(`Unable to find file with handle ${handle}`);
+              return null;
+          }
+
+          const fileRecord = openFiles.get(handle);
+          return fileRecord;
+      }
+
+      async function commonStat(reqId, path) {
+        const attrs = await getStatData(path);
+        if (attrs === null) {
+            return sftp.status(reqId, STATUS_CODE.NO_SUCH_FILE);
+        }
+        sftp.attrs(reqId, attrs);
+    } // End of 
         sftp.on('OPEN', (reqid, filename, flags, attrs) => {
           console.log('OPEN')
+          console.log('filename', filename);
           fileName = path.basename(filename);
           const handle = Buffer.alloc(4);
-
-          openFiles.set(handleCount, true);
+          
+          const fileRecord = {
+            "handle": handleCount,
+            "path": filename,
+            "readComplete": true // Have we completed our reading of data.
+          };
+          openFiles.set(handleCount, fileRecord);
           handle.writeUInt32BE(handleCount++, 0);
           sftp.handle(reqid, handle);
         }).on('WRITE', async (reqid, handle, offset, data) => {
-          if (handle.length !== 4
-              || !openFiles.has(handle.readUInt32BE(0))) {
+          const fileRecord = getFileRecord(handle);
+          console.log('fileRecord', fileRecord);
+          const dirPath = fileRecord.path + "/";
+          console.log('handle', handle);
+          try {
+            if (handle.length !== 4 || !openFiles.has(handle.readUInt32BE(0))) {
             return sftp.status(reqid, STATUS_CODE.FAILURE);
           }
-          await uploadFile(bucketName, fileName, data);
+          await uploadFile(bucketName, fileRecord.path, data);
           sftp.status(reqid, STATUS_CODE.OK);
-          
-        }).on('OPENDIR', (reqID, path) => { 
+          } catch(error) {
+            return sftp.status(reqid, STATUS_CODE.FAILURE, error);
+          }
+        }).on('OPENDIR', async (reqId, path) => { 
           console.info('OPENDIR', path);
-          readDirPath = path;
-          const handle = Buffer.alloc(4);
+          path = normalizePath(path);
+          console.log('path', path);
 
-          openFiles.set(handleCount, true);
-          handle.writeUInt32BE(handleCount++, 0);
-          sftp.handle(reqID, handle);
-        }).on('READDIR', async (reqID, handle) => {
-          if (handle.length !== 4 ) {
+          if (path !== "") {
+            try {
+                const directoryList = await getDirectoryList(path);
+                console.log('Content', directoryList);
+                if (directoryList?.CommonPrefixes.length == 0) {
+                    console.log(`we found no files/directories with directory: "${path}"`);
+                    return sftp.status(reqId, STATUS_CODE.NO_SUCH_FILE);
+                }
+            } catch (ex) {
+                console.log(`Exception:`, ex);
+                return sftp.status(reqId, STATUS_CODE.FAILURE);
+            }
+          }
+
+          const handle = handleCount;
+          handleCount = handleCount + 1;
+
+          const fileRecord = {
+            "handle": handle,
+            "path": path,
+            "readComplete": false // Have we completed our reading of data.
+          };
+
+          openFiles.set(handle, fileRecord);
+          const handleBuffer = Buffer.alloc(4);
+          
+          handleBuffer.writeUInt32BE(handle, 0);
+          sftp.handle(reqId, handleBuffer);
+        })
+        .on('READDIR', async (reqid, handle) => {
+          try {
+            const fileRecord = getFileRecord(handle);
+            const dirPath = fileRecord.path + "/";
+
+            console.log('dirPath', dirPath);
+
+            if (fileRecord === null) return sftpStream.status(reqid, STATUS_CODE.FAILURE);
+            if (fileRecord.readComplete) return sftp.status(reqid, STATUS_CODE.EOF);
+            fileRecord.readComplete = true;
+            const directoryList = await getDirectoryList(dirPath);
+            console.log('directoryList', directoryList);
+
+            const fileNames = setFileNames(directoryList, dirPath) || [];
+            const folderNames = setFolderNames(directoryList, dirPath) || [];
+
+            console.log('fileNames', fileNames);
+            console.log('folderNames', folderNames);
+            
+            fileRecord.readComplete = true;
+            return sftp.name(reqid, fileNames.concat(folderNames));
+          } catch(error) {
+            console.log('Error', error);
             return sftp.status(reqid, STATUS_CODE.FAILURE);
           }
-          const directory = await getDirectoryList(readDirPath);
-          console.log('DIREVTORY', directory);
-          const directoryNames = directory?.Contents?.map((item) => {
-            const directory = new Directory(item.Key, item.Key, item.Size);
-            return directory;
-          });
-
-
-          console.log('directoryNames', directoryNames);
-          sftp.name(reqID, directoryNames);
-        }).on('CLOSE', (reqid, handle) => {
+        })
+        .on('REALPATH', (reqid, path) => {
+          console.log('Returning', path);
+          path = PATH.normalize(path);
+                    if (path === '..') {
+                        path = '/';
+                    }
+                    if (path === '.') {
+                        path = '/';
+                    }
+          return sftp.name(reqid, [{ filename: path }]);
+          
+        }).on('STAT', async (reqId, path) => {
+          console.log('Stat', path);
+          commonStat(reqId, path);
+      })
+        
+        .on('READLINK', (reqID, path) => {
+          console.info('READLINK');
+      }).on('SETSTAT', (reqID, path, attrs) => {
+          console.info('SETSTAT');
+      }).on('MKDIR', (reqID, path, attrs) => {
+          console.info('MKDIR');
+      }).on('RENAME', (reqID, oldPath, newPath) => {
+          console.info('RENAME');
+      }).on('SYMLINK', (reqID, linkpath, tagetpath) => {
+          console.info('SYMLINK');
+      }).on('CLOSE', (reqid, handle) => {
           let fnum;
 
           if (handle.length !== 4

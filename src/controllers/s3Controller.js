@@ -12,12 +12,11 @@ const uploadFile = async (bucketName, fileName, fileData) => {
     try {
         const params = {
             Bucket: bucketName,
-            Key: fileName,
+            Key: `TestFolder${fileName}`,
             Body: fileData
         };
     
         const data = await s3.upload(params).promise()
-        console.log('result:', data);
         return data;
     } catch(error) {
         throw error;
@@ -25,11 +24,12 @@ const uploadFile = async (bucketName, fileName, fileData) => {
 }
 
 const getDirectoryList = async (prefix) => {
+    const newPrefix = prefix != '/' ? prefix : '';
     try {
         const params = {
             Bucket: "santytest",
-            Delimiter: prefix,
-            Prefix: prefix != '/' ? prefix : ''
+            Delimiter: '/',
+            Prefix: 'TestFolder/' + newPrefix
            };
     
         const data = await s3.listObjectsV2(params).promise();
