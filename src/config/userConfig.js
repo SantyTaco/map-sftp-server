@@ -1,11 +1,11 @@
 const userConfig = {
     bankFirstUser: {
         password: 'bfpassword',
-        folderName: 'BancFirst'
+        folderRootName: 'BancFirstDropbox'
     },
     energyLinkUser: {
         password: 'elpassword',
-        folderName: 'EnergyLink'
+        folderRootName: 'EnergylinkDropbox'
     }
 }
 

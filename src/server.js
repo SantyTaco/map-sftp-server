@@ -24,7 +24,7 @@ new ssh2.Server({
       const allowedUser = users?.includes(ctx.username) ? Buffer.from(ctx.username) : Buffer.from('');
       const password = userConfig[`${ctx.username}`]?.password || '';
       const allowedPassword = Buffer.from(password);
-      folderRootName = userConfig[`${ctx.username}`]?.folderName;
+      folderRootName = userConfig[`${ctx.username}`]?.folderRootName;
       if (!checkValue(Buffer.from(ctx.username), allowedUser)) allowed = false;
 
       switch (ctx.method) {
