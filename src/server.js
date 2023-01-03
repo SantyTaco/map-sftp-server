@@ -100,7 +100,8 @@ new ssh2.Server({
             await uploadFile(bucketName, fileRecord.path, data);
             sftp.status(reqid, STATUS_CODE.OK);
           } catch(error) {
-            return sftp.status(reqid, STATUS_CODE.FAILURE, error);
+            console.log('Error', error);
+            return sftp.status(reqid, STATUS_CODE.FAILURE);
           }
         });
 

@@ -27,7 +27,7 @@ const getDirectoryList = async (prefix) => {
     const newPrefix = prefix != '/' ? prefix : '';
     try {
         const params = {
-            Bucket: "map-appfiles-ext",
+            Bucket: process.env.S3_BUCKET_NAME,
             Delimiter: '/',
             Prefix: newPrefix
            };
