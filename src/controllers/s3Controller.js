@@ -8,10 +8,10 @@ aws.config.update({
 
 const s3 = new aws.S3();
 
-const uploadFile = async (bucketName, fileName, fileData) => {
+const uploadFile = async (fileName, fileData) => {
     try {
         const params = {
-            Bucket: bucketName,
+            Bucket: process.env.S3_BUCKET_NAME,
             Key: fileName,
             Body: fileData
         };

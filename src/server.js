@@ -10,7 +10,6 @@ const PATH = require('path');
 const {utils: {sftp: {OPEN_MODE, STATUS_CODE}}} = ssh2;
 
 const users = Object.keys(userConfig);
-const bucketName = 'santytest';
 let folderRootName = '';
 
 new ssh2.Server({
@@ -97,7 +96,7 @@ new ssh2.Server({
 
             if (handle.length !== 4 || !openFiles.has(handle.readUInt32BE(0))) return sftp.status(reqid, STATUS_CODE.FAILURE);
           
-            await uploadFile(bucketName, fileRecord.path, data);
+            await uploadFile(fileRecord.path, data);
             sftp.status(reqid, STATUS_CODE.OK);
           } catch(error) {
             console.log('Error', error);
