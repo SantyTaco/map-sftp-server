@@ -27,7 +27,7 @@ const getDirectoryList = async (prefix) => {
     const newPrefix = prefix != '/' ? prefix : '';
     try {
         const params = {
-            Bucket: "santytest",
+            Bucket: "map-appfiles-ext",
             Delimiter: '/',
             Prefix: newPrefix
            };
