@@ -89,7 +89,9 @@ new ssh2.Server({
           openFiles.set(handleCount, fileRecord);
           handle.writeUInt32BE(handleCount++, 0);
           sftp.handle(reqid, handle);
-        }).on('WRITE', async (reqid, handle, offset, data) => {
+        });
+
+        sftp.on('WRITE', async (reqid, handle, offset, data) => {
           try {
             const fileRecord = getFileRecord(handle);
 
@@ -100,7 +102,9 @@ new ssh2.Server({
           } catch(error) {
             return sftp.status(reqid, STATUS_CODE.FAILURE, error);
           }
-        }).on('OPENDIR', async (reqId, path) => {
+        });
+
+        sftp.on('OPENDIR', async (reqId, path) => {
           console.log('path', path)
           path = normalizePath(path);
           if (path !== "") {
@@ -131,8 +135,9 @@ new ssh2.Server({
           
           handleBuffer.writeUInt32BE(handle, 0);
           sftp.handle(reqId, handleBuffer);
-        })
-        .on('READDIR', async (reqid, handle) => {
+        });
+
+        sftp.on('READDIR', async (reqid, handle) => {
           try {
             const fileRecord = getFileRecord(handle);
             const dirPath = fileRecord.path + "/";
@@ -151,8 +156,9 @@ new ssh2.Server({
             console.log('Error', error);
             return sftp.status(reqid, STATUS_CODE.FAILURE);
           }
-        })
-        .on('REALPATH', (reqid, path) => {
+        });
+
+        sftp.on('REALPATH', (reqid, path) => {
           console.log('Returning', path);
           path = PATH.normalize(path);
                     if (path === '..') {
@@ -163,9 +169,14 @@ new ssh2.Server({
                     }
           return sftp.name(reqid, [{ filename: path }]);
           
-        }).on('STAT', async (reqId, path) => {
+        });
+
+        sftp.on('STAT', async (reqId, path) => {
           commonStat(reqId, path);
-        }).on('CLOSE', (reqid, handle) => {
+        });
+
+        sftp.on('CLOSE', (reqid, handle) => {
+          console.log('Close');
           let fnum;
 
           if (handle.length !== 4
@@ -176,6 +187,9 @@ new ssh2.Server({
           openFiles.delete(fnum);
           sftp.status(reqid, STATUS_CODE.OK);
         });
+      }).on('end', () =>{
+        console.log('Client end');
+        client.end();
       });
     });
   }).on('close', () => {
