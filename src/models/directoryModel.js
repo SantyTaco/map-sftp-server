@@ -1,5 +1,5 @@
 class Directory {
-    constructor(fileName, longName, mode, size) {
+    constructor(fileName, longName, mode, size, lastModified) {
         this.filename = fileName;
         this.longname = longName;
         this.attrs = {
@@ -8,7 +8,7 @@ class Directory {
             uid: '',
             gid: '',
             atime: '',
-            mtime: ''
+            mtime: lastModified ? new Date(lastModified).getTime() / 1000 : ''
         }
     }
 }

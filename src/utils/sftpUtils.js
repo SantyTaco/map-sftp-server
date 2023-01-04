@@ -96,7 +96,7 @@ const setFileNames = (directoryList, dirPath) => {
       const newName = name.replace(`${newDirPath}`, '');
 
       if (newName) {
-        const directory = new Directory(newName, newName, MODE_FILE, file.Size);
+        const directory = new Directory(newName, newName, MODE_FILE, file.Size, file.LastModified);
         fileNames.push(directory);
       };
     });
@@ -114,7 +114,7 @@ const setFileNames = (directoryList, dirPath) => {
 
         if(newName) {
           const folderName = newName.replace('/', '');
-          const directory = new Directory(folderName, folderName, MODE_DIR, 0);
+          const directory = new Directory(folderName, folderName, MODE_DIR, 0, '');
           folderNames.push(directory);
         }; 
       })
