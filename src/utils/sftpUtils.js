@@ -1,5 +1,5 @@
 const { timingSafeEqual } = require('crypto');
-const { getDirectoryList } = require('../controllers/s3Controller');
+const { getDirectoryList, uploadFile } = require('../controllers/s3Controller');
 const PATH = require('path');
 const Directory = require('../models/directoryModel');
 const fs = require('fs');
@@ -36,11 +36,11 @@ const  normalizePath = (path) => {
     return path;
 }
 
-const getStatData = async (path) =>  {
+const getStatAttributes = async (path) =>  {
     let attrs = null;
     let dirPath = path + "/";
 
-    if (dirPath === "/") { // The root is a directory ... simple base/special case.
+    if (dirPath === "/") {
         attrs = {
             "mode": MODE_DIR
         };
@@ -52,7 +52,7 @@ const getStatData = async (path) =>  {
         let existFolder = false;
 
         if (directoryList.Contents.length != 0) {
-            if(directoryList?.Contents[0].Key === dirPath) {
+            if(directoryList?.Contents[0].Key.toUpperCase() === dirPath.toUpperCase()) {
                 existFolder = true;
             }
         }
@@ -61,8 +61,7 @@ const getStatData = async (path) =>  {
             for(const directory of directoryList?.CommonPrefixes) {
                 const folderNames = directory?.Prefix?.split('/');
                 const lastFolderName = folderNames[folderNames?.length - 2];
-                if(lastFolderName == dirPath) {
-               
+                if(lastFolderName.toUpperCase() == dirPath.toUpperCase()) {
                     existFolder = true;
                     break;
                 }
@@ -84,7 +83,6 @@ const getStatData = async (path) =>  {
         console.log(`STAT Error: ${exc}`);
         return null;
     }
-    return null;
 }
 
 const setFileNames = (directoryList, dirPath) => {
@@ -122,4 +120,29 @@ const setFileNames = (directoryList, dirPath) => {
     return folderNames;
   }
 
-  module.exports = { checkValue, normalizePath, setFileNames, setFolderNames, getStatData };
+  const execOperationByFlag = async (fileRecord) => {
+    try {
+        if (fileRecord?.flag === 'w' && fileRecord.readComplete) {
+            const buffer = Buffer.concat(fileRecord.chunks);
+            const uploadResponse = await uploadFile(fileRecord.path, buffer);
+          }
+    } catch (err) {
+        throw err;
+    }
+  }
+  
+  const checkFlagRequest = (stringflags, handleCount, filename) => {
+    const fileRecord =   {
+      handle: handleCount,
+      path: filename.replaceAll('\\', '/'),
+    };
+  
+    if (stringflags === 'w') {
+      fileRecord.chunks = [];
+      fileRecord.readComplete = false;
+      fileRecord.flag = stringflags;
+    } 
+    return fileRecord;
+  }
+
+  module.exports = { checkValue, normalizePath, setFileNames, setFolderNames, getStatAttributes, execOperationByFlag, checkFlagRequest };

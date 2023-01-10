@@ -13,10 +13,10 @@ const uploadFile = async (fileName, fileData) => {
         const params = {
             Bucket: process.env.S3_BUCKET_NAME,
             Key: fileName,
-            Body: fileData
+            Body: fileData,
         };
 
-        const data = await s3.upload(params).promise()
+        const data = await s3.upload(params).promise();
         return data;
     } catch(error) {
         throw error;
