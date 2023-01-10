@@ -161,10 +161,12 @@ new ssh2.Server({
         });
 
         sftp.on('REALPATH', (reqid, path) => {
-          console.log('REALPATH', path);
+          console.log('REALPATH');
           path = PATH.normalize(path);
           if (path === '..' || path === '.') path = folderRootName;
-                   
+
+          const insensitiveFolders = path.replace(folderRootName, '').toUpperCase();
+          path = folderRootName + insensitiveFolders;
           return sftp.name(reqid, [{ filename: path }]);
         });
 

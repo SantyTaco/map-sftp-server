@@ -52,7 +52,7 @@ const getStatAttributes = async (path) =>  {
         let existFolder = false;
 
         if (directoryList.Contents.length != 0) {
-            if(directoryList?.Contents[0].Key.toUpperCase() === dirPath.toUpperCase()) {
+            if(directoryList?.Contents[0].Key === dirPath) {
                 existFolder = true;
             }
         }
@@ -61,7 +61,7 @@ const getStatAttributes = async (path) =>  {
             for(const directory of directoryList?.CommonPrefixes) {
                 const folderNames = directory?.Prefix?.split('/');
                 const lastFolderName = folderNames[folderNames?.length - 2];
-                if(lastFolderName.toUpperCase() == dirPath.toUpperCase()) {
+                if(lastFolderName == dirPath) {
                     existFolder = true;
                     break;
                 }
