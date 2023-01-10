@@ -97,7 +97,6 @@ new ssh2.Server({
           console.log('Write');
           try {
             const fileRecord = getFileRecord(handle);
-            console.log('Write fileRecord', fileRecord);
             fileRecord.chunks.push(data);
             if (handle.length !== bufferSize || !openFiles.has(handle.readUInt32BE(0))) return sftp.status(reqid, STATUS_CODE.FAILURE);
             fileRecord.readComplete = true;
